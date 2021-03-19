@@ -33,7 +33,10 @@
 
 # cmake
 cmake-build-debug
+CMakeLists.txt
 
 # data
 graph_files
 .DS_Store
+.idea
+*.txt
