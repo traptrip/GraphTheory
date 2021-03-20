@@ -29,6 +29,10 @@ private:
     void readAdjList(std::ifstream& graphFile);
     void readListOfEdges(std::ifstream& graphFile);
 
+    void writeAdjMatrix(std::ofstream& graphFile);
+    void writeAdjList(std::ofstream& graphFile);
+    void writeListOfEdges(std::ofstream& graphFile);
+
 public:
     Graph();
     explicit Graph(const std::string& fileName);
@@ -40,7 +44,7 @@ public:
     void transformToAdjList();
     void transformToAdjMatrix();
     void transformToListOfEdges();
-    void writeGraph(std::string fileName);
+    void writeGraph(const std::string& fileName);
 };
 
 

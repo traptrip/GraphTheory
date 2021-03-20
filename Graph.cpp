@@ -70,6 +70,7 @@ void Graph::readAdjList(std::ifstream &graphFile)
                 else
                     num += i;
             }
+            row.insert(std::stoi(num));
             this->adjacencyList.push_back(row);
         }
         else
@@ -101,25 +102,78 @@ void Graph::readListOfEdges(std::ifstream &graphFile)
         if (!isWeighted)
             this->listOfEdges.emplace_back(row[0], row[1]);
         else
+        {
+            std::cout << row[0];
             this->listOfEdgesWeighted.emplace_back(row[0], row[1], row[2]);
+        }
     }
 }
 
 // WRITING METHOD
-void Graph::writeGraph(std::string fileName)
+void Graph::writeGraph(const std::string& fileName)
 {
     std::ofstream graphFile;
-    graphFile.open ("output_graph.txt");
+    graphFile.open (fileName);
 
     // write base params of the graph
     graphFile << graphType << ' ' << nodesQuantity;
-    if (graphType == 'L')
+    if (graphType == 'E')
         graphFile << ' ' << edgesQuantity;
     graphFile << '\n' << isDirected << ' ' << isWeighted << '\n';
 
-
+    // write graph
+    if (graphType == 'C')  // adjacency matrix
+        this->writeAdjMatrix(graphFile);
+    else if (graphType == 'L')  // // adjacency list
+        this->writeAdjList(graphFile);
+    else if (graphType == 'E')  // list of edges
+        this->writeListOfEdges(graphFile);
 
     graphFile.close();
+}
+
+void Graph::writeAdjMatrix(std::ofstream &graphFile)
+{
+    for (const auto& row: adjacencyMatrix)
+    {
+        std::string line;
+        for (const auto& val: row) line += std::to_string(val) + ' ';
+        line[line.length() - 1] = '\n';
+        graphFile << line;
+    }
+}
+
+void Graph::writeAdjList(std::ofstream &graphFile)
+{
+    if (!isWeighted)
+        for (const auto& row: adjacencyList)
+        {
+            std::string line;
+            for (auto val : row) line += std::to_string(val) + ' ';
+            line[line.length() - 1] = '\n';
+            graphFile << line;
+        }
+    else
+        for (const auto& row: adjacencyListWeighted)
+        {
+            std::string line;
+            for (auto valAndWeight : row)
+                line += std::to_string(valAndWeight.first) + ' ' + std::to_string(valAndWeight.second) + ' ';
+            line[line.length() - 1] = '\n';
+            graphFile << line;
+        }
+}
+
+void Graph::writeListOfEdges(std::ofstream &graphFile)
+{
+    if (!isWeighted)
+        for (const auto& edge: listOfEdges)
+            graphFile << std::to_string(edge.first) << ' ' << std::to_string(edge.second) << '\n';
+    else
+        for (const auto& edge: listOfEdgesWeighted)
+            graphFile << std::to_string(std::get<0>(edge)) << ' '
+                      << std::to_string(std::get<1>(edge)) << ' '
+                      << std::to_string(std::get<2>(edge)) << '\n';
 }
 
 
@@ -143,17 +197,9 @@ void Graph::addEdge(int from, int to, int weight)
             adjacencyListWeighted[to_idx].insert(std::make_pair(from, weight));
     }
     else if (!listOfEdges.empty())
-    {
         listOfEdges.emplace_back(from, to);
-        if (!isDirected)
-            listOfEdges.emplace_back(to, from);
-    }
     else if (!listOfEdgesWeighted.empty())
-    {
         listOfEdgesWeighted.emplace_back(from, to, weight);
-        if (!isDirected)
-            listOfEdgesWeighted.emplace_back(to, from, weight);
-    }
 }
 
 
@@ -188,7 +234,8 @@ void Graph::removeEdge(int from, int to)
             auto edge = *it;
             if (isDirected && edge == std::make_pair(from, to))
                     listOfEdges.erase(it);
-            else if (edge == std::make_pair(from, to) || edge == std::make_pair(to, from))
+            else // isn't Directed
+                if (edge == std::make_pair(from, to) || edge == std::make_pair(to, from))
                 listOfEdges.erase(it);
         }
     }
@@ -214,6 +261,7 @@ int Graph::changeEdge(int from, int to, int newWeight)
     if (!adjacencyMatrix.empty())
     {
         oldWeight = adjacencyMatrix[from_idx][to_idx];
+        if (newWeight > 1) isWeighted = true;
     }
     else if (!adjacencyListWeighted.empty())
     {

@@ -1,4 +1,6 @@
 #include <iostream>
+//#include "fstream"
+//#include <vector>
 #include "Graph.h"
 #include "Graph.cpp"
 //#include "StringUtils.h"
@@ -34,23 +36,29 @@ using namespace std;
 
 
 int main() {
-//    string graphPath = "/Users/and/Desktop/3курс/2сем/GraphTheory/Graph/graph_files/input_L1_D_0_W_1.txt";
-//    Graph g;
-//    g.readGraph(graphPath);
+    string graphPath = "/Users/and/Desktop/3курс/2сем/GraphTheory/Graph/graph_files/input_1e3_1e5.txt";
+    Graph g;
+    g.readGraph(graphPath);
+//    g.changeEdge(1, 1, 1);
+
+    g.writeGraph("output_graph.txt");
+
+
+
+//    int nodesQuantity, edgesQuantity;
+//    bool isDirected, isWeighted;
+//    string graphType = "C";
 //
-//    g.changeEdge(1, 2, 5);
-    int nodesQuantity, edgesQuantity;
-    bool isDirected, isWeighted;
-    string graphType = "C";
+//    nodesQuantity = 10;
+//    isDirected = isWeighted = false;
+//
+//    std::ofstream graphFile;
+//    graphFile.open ("output_graph.txt");
+//
+//    graphFile << graphType << ' ' << nodesQuantity << ' ' << edgesQuantity << '\n' << isDirected << ' ' << isWeighted << '\n';
+//    graphFile.close();
 
-    nodesQuantity = 10;
-    isDirected = isWeighted = false;
 
-    std::ofstream graphFile;
-    graphFile.open ("output_graph.txt");
-
-    graphFile << graphType << ' ' << nodesQuantity << ' ' << edgesQuantity << '\n' << isDirected << ' ' << isWeighted << '\n';
-    graphFile.close();
 
     return 0;
 }
