@@ -6,15 +6,21 @@
 #include "Graph.h"
 
 
-Graph::Graph() {}
+Graph::Graph() = default;
 
-// READING METHODS
+Graph::Graph(const std::string& fileName) { this->readGraph(fileName); }
 
-Graph::Graph(const std::string& fileName)
+Graph::~Graph()
 {
-    this->readGraph(fileName);
+    adjacencyMatrix.clear();
+    adjacencyList.clear();
+    adjacencyListWeighted.clear();
+    listOfEdges.clear();
+    listOfEdgesWeighted.clear();
 }
 
+
+// READING METHODS
 void Graph::readGraph(const std::string& fileName)
 {
     std::string line;
@@ -25,7 +31,7 @@ void Graph::readGraph(const std::string& fileName)
     if (graphType == 'E')
         graphFile >> edgesQuantity;
     graphFile >> isDirected >> isWeighted;
-    graphFile.ignore(1, '\n');  // ignore blank line
+    graphFile.ignore(10, '\n');  // ignore blank line
 
         // Read graph
     if (graphType == 'C')  // adjacency matrix
@@ -102,14 +108,12 @@ void Graph::readListOfEdges(std::ifstream &graphFile)
         if (!isWeighted)
             this->listOfEdges.emplace_back(row[0], row[1]);
         else
-        {
-            std::cout << row[0];
             this->listOfEdgesWeighted.emplace_back(row[0], row[1], row[2]);
-        }
     }
 }
 
-// WRITING METHOD
+
+// WRITING METHODS
 void Graph::writeGraph(const std::string& fileName)
 {
     std::ofstream graphFile;
@@ -119,7 +123,7 @@ void Graph::writeGraph(const std::string& fileName)
     graphFile << graphType << ' ' << nodesQuantity;
     if (graphType == 'E')
         graphFile << ' ' << edgesQuantity;
-    graphFile << '\n' << isDirected << ' ' << isWeighted << '\n';
+    graphFile << "\r\n" << isDirected << ' ' << isWeighted << "\r\n";
 
     // write graph
     if (graphType == 'C')  // adjacency matrix
@@ -138,7 +142,7 @@ void Graph::writeAdjMatrix(std::ofstream &graphFile)
     {
         std::string line;
         for (const auto& val: row) line += std::to_string(val) + ' ';
-        line[line.length() - 1] = '\n';
+        line[line.length() - 1] = '\r'; line += '\n';
         graphFile << line;
     }
 }
@@ -150,7 +154,7 @@ void Graph::writeAdjList(std::ofstream &graphFile)
         {
             std::string line;
             for (auto val : row) line += std::to_string(val) + ' ';
-            line[line.length() - 1] = '\n';
+            line[line.length() - 1] = '\r'; line += '\n';
             graphFile << line;
         }
     else
@@ -159,7 +163,7 @@ void Graph::writeAdjList(std::ofstream &graphFile)
             std::string line;
             for (auto valAndWeight : row)
                 line += std::to_string(valAndWeight.first) + ' ' + std::to_string(valAndWeight.second) + ' ';
-            line[line.length() - 1] = '\n';
+            line[line.length() - 1] = '\r'; line += '\n';
             graphFile << line;
         }
 }
@@ -168,17 +172,16 @@ void Graph::writeListOfEdges(std::ofstream &graphFile)
 {
     if (!isWeighted)
         for (const auto& edge: listOfEdges)
-            graphFile << std::to_string(edge.first) << ' ' << std::to_string(edge.second) << '\n';
+            graphFile << std::to_string(edge.first) << ' ' << std::to_string(edge.second) << "\r\n";
     else
         for (const auto& edge: listOfEdgesWeighted)
             graphFile << std::to_string(std::get<0>(edge)) << ' '
                       << std::to_string(std::get<1>(edge)) << ' '
-                      << std::to_string(std::get<2>(edge)) << '\n';
+                      << std::to_string(std::get<2>(edge)) << "\r\n";
 }
 
 
 // CHANGING METHODS
-
 void Graph::addEdge(int from, int to, int weight)
 {
     int from_idx = from - 1, to_idx = to - 1;
@@ -256,6 +259,7 @@ void Graph::removeEdge(int from, int to)
 
 int Graph::changeEdge(int from, int to, int newWeight)
 {
+    // count oldWeight
     int from_idx = from - 1, to_idx = to - 1;
     int oldWeight = 0;
     if (!adjacencyMatrix.empty())
@@ -281,10 +285,12 @@ int Graph::changeEdge(int from, int to, int newWeight)
                 break;
             }
     }
+    //change edge weight
     this->removeEdge(from, to);
     this->addEdge(from, to, newWeight);
     return oldWeight;
 }
+
 
 // TRANSFORM METHODS
 void Graph::transformToAdjList()
@@ -300,6 +306,7 @@ void Graph::transformToAdjList()
         listOfEdges.clear();
         listOfEdgesWeighted.clear();
     }
+    graphType = 'L';
 }
 
 void Graph::transformToAdjMatrix()
@@ -316,6 +323,7 @@ void Graph::transformToAdjMatrix()
         listOfEdges.clear();
         listOfEdgesWeighted.clear();
     }
+    graphType = 'C';
 }
 
 void Graph::transformToListOfEdges()
@@ -327,44 +335,51 @@ void Graph::transformToListOfEdges()
         adjacencyListWeighted.clear();
     }
     else if (!adjacencyMatrix.empty())
+    {
         adjMatrixToListOfEdges();
+        adjacencyMatrix.clear();
+    }
+    graphType = 'E';
+    edgesQuantity = std::max(listOfEdges.size(), listOfEdgesWeighted.size());
 }
 
 void Graph::adjMatrixToAdjList()
 {
-    for (const auto& row: adjacencyMatrix)
+    if (!isWeighted)
     {
-        if (!isWeighted)
-        {
-            std::set<int> s;
-            for (int i : row)
-                if (i > 0) s.insert(i);
-        }
-        else
-        {
-            std::set<std::pair<int, int>> sw;
-            for (int i = 0; i < row.size(); i++)
-                if (row[i] > 0)
-                    sw.insert(std::make_pair(i+1, row[i]));
-        }
+        std::vector<std::set<int>> adjList(nodesQuantity);
+        for (unsigned long i = 0; i < adjacencyMatrix.size(); i++)
+            for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                if (adjacencyMatrix[i][j] > 0)
+                    adjList[i].insert(j + 1);
+        adjacencyList = std::move(adjList);
+    }
+    else
+    {
+        std::vector<std::set<std::pair<int, int>>> adjList(nodesQuantity);
+        for (unsigned long i = 0; i < adjacencyMatrix.size(); i++)
+            for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                if (adjacencyMatrix[i][j] > 0)
+                    adjList[i].insert(std::make_pair(j + 1, adjacencyMatrix[i][j]));
+        adjacencyListWeighted = std::move(adjList);
     }
 }
 
 void Graph::adjMatrixToListOfEdges()
 {
-    for (unsigned long i = 0; i < adjacencyMatrix.size(); i++)
+    for (int i = 0; i < nodesQuantity; i++)
     {
         if (!isWeighted)
         {
             if (!isDirected)
             {
-                for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                for (int j = i; j < nodesQuantity; j++)
                     if (adjacencyMatrix[i][j] > 0)
                         listOfEdges.emplace_back(i+1, j+1);
             }
             else
             {
-                for (unsigned long j = i; j < adjacencyMatrix.size(); j++)
+                for (int j = 0; j < nodesQuantity; j++)
                     if (adjacencyMatrix[i][j] > 0)
                         listOfEdges.emplace_back(i+1, j+1);
             }
@@ -373,13 +388,13 @@ void Graph::adjMatrixToListOfEdges()
         {
             if (!isDirected)
             {
-                for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                for (int j = i; j < nodesQuantity; j++)
                     if (adjacencyMatrix[i][j] > 0)
                         listOfEdgesWeighted.emplace_back(i+1, j+1, adjacencyMatrix[i][j]);
             }
             else
             {
-                for (unsigned long j = i; j < adjacencyMatrix.size(); j++)
+                for (int j = 0; j < nodesQuantity; j++)
                     if (adjacencyMatrix[i][j] > 0)
                         listOfEdgesWeighted.emplace_back(i+1, j+1, adjacencyMatrix[i][j]);
             }
@@ -389,32 +404,31 @@ void Graph::adjMatrixToListOfEdges()
 
 void Graph::adjListToAdjMatrix()
 {
-    std::vector<int> r(nodesQuantity, 0);
-    std::vector<std::vector<int>> adjMatrix(nodesQuantity, r);
+    std::vector<std::vector<int>> adjMatrix(nodesQuantity, std::vector<int> (nodesQuantity, 0));
 
     if (!isWeighted)
     {
+        int i = 0;
         for (const auto& adjNodes: adjacencyList)
         {
-            int j = 0;
             for (auto val: adjNodes)
             {
-                adjMatrix[j][val - 1] = 1;
-                j++;
+                adjMatrix[i][val - 1] = 1;
             }
+            i++;
         }
         adjacencyMatrix = std::move(adjMatrix);
     }
     else
     {
+        int i = 0;
         for (const auto& adjNodes: adjacencyListWeighted)
         {
-            int j = 0;
             for (auto val: adjNodes)
             {
-                adjMatrix[j][val.first - 1] = val.second;
-                j++;
+                adjMatrix[i][val.first - 1] = val.second;
             }
+            i++;
         }
         adjacencyMatrix = std::move(adjMatrix);
     }
@@ -424,47 +438,55 @@ void Graph::adjListToListOfEdges()
 {
     if (!isWeighted)
     {
+        int i = 0;
         for (const auto& adjNodes: adjacencyList)
         {
-            int j = 0;
             for (auto val: adjNodes)
             {
-                if (!isDirected && j + 1 < val)
-                    listOfEdges.emplace_back(j + 1, val);
+                if (!isDirected && i + 1 < val)
+                    listOfEdges.emplace_back(i + 1, val);
                 else if (isDirected)
-                    listOfEdges.emplace_back(j + 1, val);
-                j++;
+                    listOfEdges.emplace_back(i + 1, val);
             }
+            i++;
         }
     }
     else
     {
+        int i = 0;
         for (const auto& adjNodes: adjacencyListWeighted)
         {
-            int j = 0;
             for (auto val: adjNodes)
             {
-                if (!isDirected && j + 1 < val.first)
-                    listOfEdges.emplace_back(j + 1, val.first, val.second);
+                if (!isDirected && i + 1 < val.first)
+                    listOfEdgesWeighted.emplace_back(i + 1, val.first, val.second);
                 else if (isDirected)
-                    listOfEdges.emplace_back(j + 1, val.first, val.second);
-                j++;
+                    listOfEdgesWeighted.emplace_back(i + 1, val.first, val.second);
             }
+            i++;
         }
     }
 }
 
 void Graph::listOfEdgesToAdjMatrix()
 {
-    std::vector<int> r(nodesQuantity, 0);
-    std::vector<std::vector<int>> adjMatrix(nodesQuantity, r);
+    std::vector<std::vector<int>> adjMatrix(nodesQuantity, std::vector<int> (nodesQuantity, 0));
 
     if (!isWeighted)
         for (const auto& edge: listOfEdges)
+        {
             adjMatrix[edge.first - 1][edge.second - 1] = 1;
+            if (!isDirected)
+                adjMatrix[edge.second - 1][edge.first - 1] = 1;
+        }
     else
         for (const auto& edge: listOfEdgesWeighted)
+        {
             adjMatrix[std::get<0>(edge) - 1][std::get<1>(edge) - 1] = std::get<2>(edge);
+            if (!isDirected)
+                adjMatrix[std::get<1>(edge) - 1][std::get<0>(edge) - 1] = std::get<2>(edge);
+        }
+    adjacencyMatrix = std::move(adjMatrix);
 }
 
 void Graph::listOfEdgesToAdjList()
@@ -473,12 +495,22 @@ void Graph::listOfEdgesToAdjList()
     {
         std::vector<std::set<int>> adjList(nodesQuantity);
         for (const auto& edge: listOfEdges)
+        {
             adjList[edge.first - 1].insert(edge.second);
+            if (!isDirected)
+                adjList[edge.second - 1].insert(edge.first);
+        }
+        adjacencyList = std::move(adjList);
     }
     else
     {
         std::vector<std::set<std::pair<int, int>>> adjList(nodesQuantity);
         for (const auto& edge: listOfEdgesWeighted)
+        {
             adjList[std::get<0>(edge) - 1].insert(std::make_pair(std::get<1>(edge), std::get<2>(edge)));
+            if (!isDirected)
+                adjList[std::get<1>(edge) - 1].insert(std::make_pair(std::get<0>(edge), std::get<2>(edge)));
+        }
+        adjacencyListWeighted = std::move(adjList);
     }
 }

@@ -36,12 +36,29 @@ using namespace std;
 
 
 int main() {
-    string graphPath = "/Users/and/Desktop/3курс/2сем/GraphTheory/Graph/graph_files/input_1e3_1e5.txt";
+//    string graphPath = "../graph_files/input_c1_D_0_W_0.txt";
+//    string graphPath = "../graph_files/input_e1_D_0_W_0.txt";
+//    string graphPath = "../graph_files/input_L1_D_0_W_1.txt";
+    string graphPath = "../graph_files/input_1e3_1e5.txt";
+
+
     Graph g;
     g.readGraph(graphPath);
+    g.writeGraph("../graph_files/out_1.txt");
+
 //    g.changeEdge(1, 1, 1);
 
-    g.writeGraph("output_graph.txt");
+    g.transformToAdjList();
+    g.transformToAdjMatrix();
+    g.transformToListOfEdges();
+
+//    g.transformToAdjMatrix();
+//    g.transformToListOfEdges();
+//    g.transformToAdjList();
+
+
+
+    g.writeGraph("../graph_files/out_2.txt");
 
 
 

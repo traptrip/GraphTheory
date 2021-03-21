@@ -21,9 +21,9 @@ private:
     std::vector<std::pair<int, int>> listOfEdges;
     std::vector<std::tuple<int, int, int>> listOfEdgesWeighted;
 
-    int nodesQuantity, edgesQuantity;
-    bool isDirected, isWeighted;
-    char graphType;
+    int nodesQuantity{}, edgesQuantity{};
+    bool isDirected{}, isWeighted{};
+    char graphType{};
 
     void readAdjMatrix(std::ifstream& graphFile);
     void readAdjList(std::ifstream& graphFile);
@@ -43,6 +43,7 @@ private:
 public:
     Graph();
     explicit Graph(const std::string& fileName);
+    ~Graph();
 
     void readGraph(const std::string& fileName);
     void addEdge(int from, int to, int weight=1);
