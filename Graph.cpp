@@ -285,3 +285,200 @@ int Graph::changeEdge(int from, int to, int newWeight)
     this->addEdge(from, to, newWeight);
     return oldWeight;
 }
+
+// TRANSFORM METHODS
+void Graph::transformToAdjList()
+{
+    if (!adjacencyMatrix.empty())
+    {
+        adjMatrixToAdjList();
+        adjacencyMatrix.clear();
+    }
+    else if (!(listOfEdges.empty() && listOfEdgesWeighted.empty()))
+    {
+        listOfEdgesToAdjList();
+        listOfEdges.clear();
+        listOfEdgesWeighted.clear();
+    }
+}
+
+void Graph::transformToAdjMatrix()
+{
+    if (!(adjacencyList.empty() && adjacencyListWeighted.empty()))
+    {
+        adjListToAdjMatrix();
+        adjacencyList.clear();
+        adjacencyListWeighted.clear();
+    }
+    else if (!(listOfEdges.empty() && listOfEdgesWeighted.empty()))
+    {
+        listOfEdgesToAdjMatrix();
+        listOfEdges.clear();
+        listOfEdgesWeighted.clear();
+    }
+}
+
+void Graph::transformToListOfEdges()
+{
+    if (!(adjacencyList.empty() && adjacencyListWeighted.empty()))
+    {
+        adjListToListOfEdges();
+        adjacencyList.clear();
+        adjacencyListWeighted.clear();
+    }
+    else if (!adjacencyMatrix.empty())
+        adjMatrixToListOfEdges();
+}
+
+void Graph::adjMatrixToAdjList()
+{
+    for (const auto& row: adjacencyMatrix)
+    {
+        if (!isWeighted)
+        {
+            std::set<int> s;
+            for (int i : row)
+                if (i > 0) s.insert(i);
+        }
+        else
+        {
+            std::set<std::pair<int, int>> sw;
+            for (int i = 0; i < row.size(); i++)
+                if (row[i] > 0)
+                    sw.insert(std::make_pair(i+1, row[i]));
+        }
+    }
+}
+
+void Graph::adjMatrixToListOfEdges()
+{
+    for (unsigned long i = 0; i < adjacencyMatrix.size(); i++)
+    {
+        if (!isWeighted)
+        {
+            if (!isDirected)
+            {
+                for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                    if (adjacencyMatrix[i][j] > 0)
+                        listOfEdges.emplace_back(i+1, j+1);
+            }
+            else
+            {
+                for (unsigned long j = i; j < adjacencyMatrix.size(); j++)
+                    if (adjacencyMatrix[i][j] > 0)
+                        listOfEdges.emplace_back(i+1, j+1);
+            }
+        }
+        else
+        {
+            if (!isDirected)
+            {
+                for (unsigned long j = 0; j < adjacencyMatrix.size(); j++)
+                    if (adjacencyMatrix[i][j] > 0)
+                        listOfEdgesWeighted.emplace_back(i+1, j+1, adjacencyMatrix[i][j]);
+            }
+            else
+            {
+                for (unsigned long j = i; j < adjacencyMatrix.size(); j++)
+                    if (adjacencyMatrix[i][j] > 0)
+                        listOfEdgesWeighted.emplace_back(i+1, j+1, adjacencyMatrix[i][j]);
+            }
+        }
+    }
+}
+
+void Graph::adjListToAdjMatrix()
+{
+    std::vector<int> r(nodesQuantity, 0);
+    std::vector<std::vector<int>> adjMatrix(nodesQuantity, r);
+
+    if (!isWeighted)
+    {
+        for (const auto& adjNodes: adjacencyList)
+        {
+            int j = 0;
+            for (auto val: adjNodes)
+            {
+                adjMatrix[j][val - 1] = 1;
+                j++;
+            }
+        }
+        adjacencyMatrix = std::move(adjMatrix);
+    }
+    else
+    {
+        for (const auto& adjNodes: adjacencyListWeighted)
+        {
+            int j = 0;
+            for (auto val: adjNodes)
+            {
+                adjMatrix[j][val.first - 1] = val.second;
+                j++;
+            }
+        }
+        adjacencyMatrix = std::move(adjMatrix);
+    }
+}
+
+void Graph::adjListToListOfEdges()
+{
+    if (!isWeighted)
+    {
+        for (const auto& adjNodes: adjacencyList)
+        {
+            int j = 0;
+            for (auto val: adjNodes)
+            {
+                if (!isDirected && j + 1 < val)
+                    listOfEdges.emplace_back(j + 1, val);
+                else if (isDirected)
+                    listOfEdges.emplace_back(j + 1, val);
+                j++;
+            }
+        }
+    }
+    else
+    {
+        for (const auto& adjNodes: adjacencyListWeighted)
+        {
+            int j = 0;
+            for (auto val: adjNodes)
+            {
+                if (!isDirected && j + 1 < val.first)
+                    listOfEdges.emplace_back(j + 1, val.first, val.second);
+                else if (isDirected)
+                    listOfEdges.emplace_back(j + 1, val.first, val.second);
+                j++;
+            }
+        }
+    }
+}
+
+void Graph::listOfEdgesToAdjMatrix()
+{
+    std::vector<int> r(nodesQuantity, 0);
+    std::vector<std::vector<int>> adjMatrix(nodesQuantity, r);
+
+    if (!isWeighted)
+        for (const auto& edge: listOfEdges)
+            adjMatrix[edge.first - 1][edge.second - 1] = 1;
+    else
+        for (const auto& edge: listOfEdgesWeighted)
+            adjMatrix[std::get<0>(edge) - 1][std::get<1>(edge) - 1] = std::get<2>(edge);
+}
+
+void Graph::listOfEdgesToAdjList()
+{
+    if (!isWeighted)
+    {
+        std::vector<std::set<int>> adjList(nodesQuantity);
+        for (const auto& edge: listOfEdges)
+            adjList[edge.first - 1].insert(edge.second);
+    }
+    else
+    {
+        std::vector<std::set<std::pair<int, int>>> adjList(nodesQuantity);
+        for (const auto& edge: listOfEdgesWeighted)
+            adjList[std::get<0>(edge) - 1].insert(std::make_pair(std::get<1>(edge), std::get<2>(edge)));
+    }
+}

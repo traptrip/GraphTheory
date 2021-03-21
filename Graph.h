@@ -33,6 +33,13 @@ private:
     void writeAdjList(std::ofstream& graphFile);
     void writeListOfEdges(std::ofstream& graphFile);
 
+    void adjMatrixToAdjList();
+    void adjMatrixToListOfEdges();
+    void adjListToAdjMatrix();
+    void adjListToListOfEdges();
+    void listOfEdgesToAdjMatrix();
+    void listOfEdgesToAdjList();
+
 public:
     Graph();
     explicit Graph(const std::string& fileName);
