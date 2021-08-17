@@ -3,10 +3,16 @@
 //
 
 #include <string>
+#include "fstream"
+#include <sstream>
 #include <vector>
 #include <set>
-#include <fstream>
-#include "StringUtils.h"
+#include <queue>
+#include <map>
+#include <iterator>
+#include <tuple>
+#include <climits>
+#include <stack>
 
 #ifndef GRAPH_GRAPH_H
 #define GRAPH_GRAPH_H
@@ -40,8 +46,11 @@ private:
     void listOfEdgesToAdjMatrix();
     void listOfEdgesToAdjList();
 
+    static unsigned long getRoot(std::vector<bool> usedNodes, unsigned long lastRoot);
+    bool isBridge(int startNode, int endNode, std::vector<std::set<int>> &edges);
+
 public:
-    Graph();
+    explicit Graph(int numNodes = 0);
     explicit Graph(const std::string& fileName);
     ~Graph();
 
@@ -53,6 +62,31 @@ public:
     void transformToAdjMatrix();
     void transformToListOfEdges();
     void writeGraph(const std::string& fileName);
+
+    // min spanning tree methods
+    Graph getSpaingTreePrima();
+    Graph getSpaingTreeKruscal();
+    Graph getSpaingTreeBoruvka();
+
+    // euler path / loop
+    int checkEuler(bool& circleExist); // Check if Graph has Euler path
+    std::vector<int> getEuleranTourFleri();
+    std::vector<int> getEuleranTourEffective();
+};
+
+
+// Disjoint Set Union
+class DSU
+{
+private:
+    int numNodes;
+    std::vector<int> parent, rank;
+
+public:
+    DSU(int numNodes);
+    int find(int x);
+    void unite(int x, int y);
+    int getNumTrees();
 };
 
 

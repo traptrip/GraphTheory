@@ -2,11 +2,88 @@
 // Created by Andrey on 27.02.2021.
 //
 
-#include <sstream>
 #include "Graph.h"
 
 
-Graph::Graph() = default;
+
+// HELP METHODS
+void DFS(int u, int p, int step, std::vector<char> &used, std::vector<std::set<int>> &edges,
+         std::vector<int> &enter, std::vector<int> &ret, std::vector<std::pair<int, int>> &bridges)
+{
+    used[u] = true;
+    enter[u] = ret[u] = step++;
+    for (auto v : edges[u])
+    {
+        v--;
+        if (v == p) continue;
+        if (used[v])
+            ret[u] = std::min(ret[u], enter[v]);
+        else
+        {
+            DFS(v, u, step, used, edges, enter, ret, bridges);
+            ret[u] = std::min(ret[u], ret[v]);
+            if (ret[v] > enter[u])
+                bridges.emplace_back(u, v);
+        }
+    }
+}
+
+
+DSU::DSU(int numNodes)
+{
+    this->numNodes = numNodes;
+    parent = std::vector<int>(numNodes);
+    rank = std::vector<int>(numNodes, 0);
+
+    for (int i = 0; i < numNodes; i++)
+        parent[i] = i;
+}
+
+
+int DSU::find(int x)
+{
+    if (parent[x] != x)
+        parent[x] = find(parent[x]);
+    return parent[x];
+}
+
+
+void DSU::unite(int x, int y)
+{
+    x = find(x);
+    y = find(y);
+
+    if (x != y)
+    {
+        if (rank[x] >= rank[y])
+            parent[y] = x;
+        else
+            parent[x] = y;
+        if (rank[x] == rank[y])
+            rank[y]++;
+    }
+}
+
+
+int DSU::getNumTrees()
+{
+    std::set<int> counter;
+    for (int i = 0; i < numNodes; i++)
+        counter.insert(find(i));
+    return counter.size();
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// MAIN METHODS
+Graph::Graph(int numNodes)
+{
+    graphType = 'L';
+    nodesQuantity = numNodes;
+    adjacencyListWeighted = std::vector<std::set<std::pair<int, int>>>(numNodes);
+    isDirected = false;
+    isWeighted = true;
+}
 
 Graph::Graph(const std::string& fileName) { this->readGraph(fileName); }
 
@@ -513,4 +590,352 @@ void Graph::listOfEdgesToAdjList()
         }
         adjacencyListWeighted = std::move(adjList);
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// minimum spanning tree methods
+unsigned long Graph::getRoot(std::vector<bool> usedNodes, unsigned long lastRoot)
+{
+    for (unsigned long i = lastRoot + 1; i < usedNodes.size(); i++)
+        if (!usedNodes[i])
+            return i;
+    return -1;
+}
+
+// Prim's algorithm
+Graph Graph::getSpaingTreePrima()
+{
+    if (nodesQuantity > 0)
+    {
+        auto previousGraphType = this->graphType;
+        this->transformToAdjList();
+
+        std::priority_queue<std::pair<int, int>, std::vector<std::pair<int, int>>, std::greater<std::pair<int, int>>> pq;
+        std::vector<int> key(nodesQuantity, INT_MAX);
+        std::vector<int> parent(nodesQuantity, -1);
+        std::vector<bool> used(nodesQuantity, false);
+        unsigned long root = 0;
+
+        while (root != -1) {
+            pq.push(std::make_pair(0, root));
+            key[root] = 0;
+
+            while (!pq.empty())
+            {
+                int endNode = pq.top().second;
+                pq.pop();
+                used[endNode] = true;
+
+                for (auto & i : adjacencyListWeighted[endNode])
+                {
+                    int startNode = i.first - 1;
+                    int weight = i.second;
+
+                    if (!used[startNode] && key[startNode] > weight)
+                    {
+                        key[startNode] = weight;
+                        pq.push(std::make_pair(key[startNode], startNode));
+                        parent[startNode] = endNode;
+                    }
+                }
+            }
+            root = getRoot(used, root);
+        }
+
+        if (previousGraphType == 'C') transformToAdjMatrix();
+        if (previousGraphType == 'E') transformToListOfEdges();
+
+        Graph minSpanningTree(nodesQuantity);
+        for (int i = 0; i < nodesQuantity; i++)
+            if (parent[i] != -1)
+                minSpanningTree.addEdge(i + 1, parent[i] + 1, key[i]);
+        return minSpanningTree;
+    }
+    Graph minSpanningTree;
+    return minSpanningTree;
+}
+
+// Kruskal algorithm
+Graph Graph::getSpaingTreeKruscal()
+{
+    if (nodesQuantity > 0)
+    {
+        std::priority_queue< std::pair<int, std::pair<int, int>>,
+        std::vector<std::pair<int, std::pair<int, int>>>,
+        std::greater<std::pair<int, std::pair<int, int>>> > pq;
+
+        switch (graphType)
+        {
+            case 'C':
+                for (int i = 0; i < nodesQuantity; i++)
+                    for (int j = i + 1; j < nodesQuantity; j++)
+                        if (adjacencyMatrix[i][j] != 0)
+                            pq.push(make_pair(adjacencyMatrix[i][j], std::make_pair(i, j)));
+                break;
+
+            case 'L':
+                for (int i = 0; i < nodesQuantity; i++)
+                    for (auto j = adjacencyListWeighted[i].begin(); j != adjacencyListWeighted[i].end(); j++)
+                        if (j->first - 1 > i)
+                            pq.push(make_pair(j->second, std::make_pair(i, j->first - 1)));
+                break;
+
+            case 'E':
+                for (auto & i : listOfEdgesWeighted)
+                    pq.push(make_pair(std::get<2>(i),
+                                      std::make_pair(std::get<0>(i) - 1, std::get<1>(i) - 1)));
+                break;
+
+            default:
+                break;
+        }
+
+        Graph minSpanningTree(nodesQuantity);
+        DSU disjointSetUnion(nodesQuantity);
+        std::pair<int, std::pair<int, int>> edge;
+        int weight, startNode, endNode;
+
+        while (!pq.empty())
+        {
+            edge = pq.top();
+            pq.pop();
+            weight = edge.first;
+            startNode = edge.second.first;
+            endNode = edge.second.second;
+
+            if (disjointSetUnion.find(startNode) != disjointSetUnion.find(endNode))
+            {
+                disjointSetUnion.unite(startNode, endNode);
+                minSpanningTree.addEdge(startNode + 1, endNode + 1, weight);
+            }
+        }
+        return minSpanningTree;
+    }
+    Graph minSpanningTree;
+    return minSpanningTree;
+}
+
+
+// Boruvka algorithm
+Graph Graph::getSpaingTreeBoruvka()
+{
+    if (nodesQuantity > 0)
+    {
+        class Edge
+        {
+        public:
+            int startNode, endNode, edgeWeight;
+            Edge() : startNode(-1), endNode(-1), edgeWeight(-1) {}
+            Edge(int start, int end, int weight) : startNode(start), endNode(end), edgeWeight(weight) {}
+        };
+
+        std::vector<Edge> edges;
+        switch (graphType)
+        {
+            case 'C':
+                for (int i = 0; i < nodesQuantity; i++)
+                    for (int j = i + 1; j < nodesQuantity; j++)
+                        if (adjacencyMatrix[i][j] != 0)
+                            edges.emplace_back(i, j, adjacencyMatrix[i][j]);
+                break;
+
+            case 'L':
+                for (int i = 0; i < nodesQuantity; i++)
+                    for (auto j = adjacencyListWeighted[i].begin(); j != adjacencyListWeighted[i].end(); j++)
+                        if (j->first - 1 > i)
+                            edges.emplace_back(i, j->first - 1, j->second);
+                break;
+
+            case 'E':
+                for (auto & edge : listOfEdgesWeighted)
+                    edges.emplace_back(std::get<0>(edge) - 1, std::get<1>(edge) - 1, std::get<2>(edge));
+                break;
+        }
+        if (graphType != 'E') edgesQuantity = edges.size();
+
+        int startNode, endNode;
+        DSU disjointSetUnion(nodesQuantity);
+
+        for (auto & edge : edges)
+        {
+            startNode = disjointSetUnion.find(edge.startNode);
+            endNode = disjointSetUnion.find(edge.endNode);
+            if (startNode != endNode)
+                disjointSetUnion.unite(startNode, endNode);
+        }
+
+        int numberOfTrees = disjointSetUnion.getNumTrees();
+        disjointSetUnion = DSU(nodesQuantity);
+        std::vector<int> bestEdge(nodesQuantity, -1);
+        int treesQuantity = nodesQuantity;
+        Graph minSpanningTree(nodesQuantity);
+
+        while (treesQuantity > numberOfTrees)
+        {
+            for (int i = 0; i < edgesQuantity; i++)
+            {
+                startNode = disjointSetUnion.find(edges[i].startNode);
+                endNode = disjointSetUnion.find(edges[i].endNode);
+                if (startNode != endNode)
+                {
+                    if (bestEdge[startNode] == -1 || edges[bestEdge[startNode]].edgeWeight > edges[i].edgeWeight)
+                        bestEdge[startNode] = i;
+                    if (bestEdge[endNode] == -1 || edges[bestEdge[endNode]].edgeWeight > edges[i].edgeWeight)
+                        bestEdge[endNode] = i;
+                }
+            }
+
+            for (int & i : bestEdge)
+            {
+                if (i != -1)
+                {
+                    startNode = disjointSetUnion.find(edges[i].startNode);
+                    endNode = disjointSetUnion.find(edges[i].endNode);
+                    if (startNode != endNode)
+                    {
+                        disjointSetUnion.unite(startNode, endNode);
+                        minSpanningTree.addEdge(edges[i].startNode + 1, edges[i].endNode + 1, edges[i].edgeWeight);
+                        treesQuantity--;
+                    }
+                }
+            }
+            for (int & i : bestEdge) i = -1;
+        }
+        return minSpanningTree;
+    }
+    Graph minSpanningTree;
+    return minSpanningTree;
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// Euler methods
+bool Graph::isBridge(int startNode, int endNode, std::vector<std::set<int>> &edges)
+{
+    std::vector<int> enter(nodesQuantity), ret(nodesQuantity);
+    std::vector<char> used(nodesQuantity);
+    std::vector<std::pair<int, int>> bridges;
+    DFS(startNode, -1, 0, used, edges, enter, ret, bridges);
+    for (auto bridge : bridges)
+    {
+        if (bridge == std::make_pair(startNode, endNode))
+            return true;
+    }
+    return false;
+}
+
+
+// Check if Graph has an Euler path
+int Graph::checkEuler(bool & isCycleExist)
+{
+    transformToAdjList();
+
+    int kOddVertex = 0, resNode = 0;
+    for (int i = 0; i < nodesQuantity; ++i)
+    {
+        if (adjacencyList[i].size() & 1)
+        {
+            kOddVertex++;
+            resNode = i + 1;
+        }
+    }
+    if (kOddVertex <= 2)
+    {
+        DSU disjointSetUnion(nodesQuantity);
+        for (int i = 0; i < nodesQuantity; ++i)
+            for (auto edge : adjacencyList[i])
+                disjointSetUnion.unite(i, edge - 1);
+
+        std::map<int, int> comp;
+        for (int i = 0; i < nodesQuantity; ++i)
+            comp[disjointSetUnion.find(i)]++;
+        bool isOk = true;
+        for (auto item : comp)
+        {
+            if (item.second > 1)
+            {
+                if (isOk)
+                {
+                    if (!resNode)
+                        resNode = item.first + 1;
+                    isOk = false;
+                }
+                else
+                {
+                    resNode = 0;
+                    break;
+                }
+            }
+        }
+    }
+    isCycleExist = (kOddVertex == 0) && resNode;
+
+    return resNode;  // resNode == 0 -> there is no Euler tour
+}
+
+
+// Fleri algorithm
+std::vector<int> Graph::getEuleranTourFleri()
+{
+    transformToAdjList();
+
+    bool isCycleExist;
+    int currentNode = checkEuler(isCycleExist) - 1;
+
+    std::vector<std::set<int>> edges(adjacencyList);
+    std::vector<int> tour;
+    tour.reserve(nodesQuantity);
+    tour.push_back(currentNode + 1);
+
+    while (!edges[currentNode].empty())
+    {
+        int nextNode = -1;
+        for (int v : edges[currentNode])
+        {
+            nextNode = v - 1;
+            if (!isBridge(currentNode, nextNode, edges))
+                break;
+        }
+        tour.push_back(nextNode + 1);
+        edges[currentNode].erase(nextNode + 1);
+        edges[nextNode].erase(currentNode + 1);
+        currentNode = nextNode;
+    }
+
+    return tour;
+}
+
+
+// Hirholfcher algorithm
+std::vector<int> Graph::getEuleranTourEffective()
+{
+    transformToAdjList();
+
+    std::vector<std::set<int>> edges(adjacencyList);
+    std::stack<int> s;
+    std::vector<int> tour;
+    tour.reserve(nodesQuantity);
+
+    bool isCycleExist;
+    int currentNode = checkEuler(isCycleExist) - 1;
+    s.push(currentNode);
+    while (!s.empty())
+    {
+        int nextNode = s.top();
+        if (!edges[nextNode].empty())
+        {
+            currentNode = *edges[nextNode].begin() - 1;
+            edges[nextNode].erase(currentNode + 1);
+            edges[currentNode].erase(nextNode + 1);
+            s.push(currentNode);
+        }
+        else
+        {
+            tour.push_back(s.top() + 1);
+            s.pop();
+        }
+    }
+
+    return tour;
 }
